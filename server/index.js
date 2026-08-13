@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
+const path = require("path");
 
 if (process.env.NODE_ENV !== "production") {
   dotenv.config({ override: true });
@@ -28,6 +29,12 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+// Serve uploaded product images
+app.use(
+  "/uploads",
+  express.static(path.join(__dirname, "uploads"))
+);
 
 app.use("/api/products", productRoutes);
 app.use("/api/categories", categoryRoutes);
