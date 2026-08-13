@@ -28,9 +28,8 @@ import {
    Legend,
 } from "recharts";
 
-const API_URL =
-  import.meta.env.VITE_API_URL ||
-  "http://localhost:5000/api";
+const API_URL = "https://inventory-saas-c55p.onrender.com/api";
+
 
 const getToken = () => localStorage.getItem("token");
 
@@ -932,7 +931,7 @@ const paginatedProducts =
       return image;
     }
 
-    return `http://localhost:5000/uploads/${image}`;
+   return `https://inventory-saas-c55p.onrender.com/uploads/${image}`;
   };
 
   // ==========================
