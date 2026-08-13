@@ -4,31 +4,48 @@ function Register() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    password: ""
+    password: "",
   });
 
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const apiUrl = import.meta.env.VITE_API_URL;
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    setFormData((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    setMessage("");
+
+    if (!apiUrl) {
+      setMessage("API URL is not configured.");
+      return;
+    }
+
+    setLoading(true);
+
     try {
-      const response = await fetch("http://localhost:5000/api/auth/register", {
+      const response = await fetch(`${apiUrl}/api/auth/register`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(formData),
       });
 
       const result = await response.json();
+
+      if (!response.ok) {
+        setMessage(result.message || "Registration failed.");
+        return;
+      }
 
       if (result.success) {
         setMessage("✅ Registration successful! You can now log in.");
@@ -36,15 +53,18 @@ function Register() {
         setFormData({
           name: "",
           email: "",
-          password: ""
+          password: "",
         });
       } else {
-        setMessage(result.message);
+        setMessage(result.message || "Registration failed.");
       }
-
     } catch (error) {
-      console.error(error);
-      setMessage("Server connection failed.");
+      console.error("Registration error:", error);
+      setMessage(
+        "❌ Unable to connect to the server. Please try again."
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -53,7 +73,6 @@ function Register() {
       <h1>Create Account</h1>
 
       <form onSubmit={handleSubmit} className="login-form">
-
         <input
           type="text"
           name="name"
@@ -61,6 +80,7 @@ function Register() {
           value={formData.name}
           onChange={handleChange}
           required
+          disabled={loading}
         />
 
         <input
@@ -70,6 +90,7 @@ function Register() {
           value={formData.email}
           onChange={handleChange}
           required
+          disabled={loading}
         />
 
         <input
@@ -79,15 +100,16 @@ function Register() {
           value={formData.password}
           onChange={handleChange}
           required
+          minLength={6}
+          disabled={loading}
         />
 
-        <button type="submit">
-          Register
+        <button type="submit" disabled={loading}>
+          {loading ? "Creating Account..." : "Register"}
         </button>
-
       </form>
 
-      <p>{message}</p>
+      {message && <p>{message}</p>}
     </div>
   );
 }
