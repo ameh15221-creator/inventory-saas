@@ -1,10 +1,13 @@
-console.log("=== INDEX.JS IS RUNNING ===");
-console.log("Current directory:", __dirname);
-
 const express = require("express");
 const cors = require("cors");
-const path = require("path");
-require("dotenv").config();
+const dotenv = require("dotenv");
+
+if (process.env.NODE_ENV !== "production") {
+  dotenv.config();
+}
+
+console.log("=== INDEX.JS IS RUNNING ===");
+console.log("Current directory:", process.cwd());
 
 console.log("Loading database...");
 require("./config/db");
@@ -23,38 +26,22 @@ console.log("✅ Authentication routes loaded successfully.");
 
 const app = express();
 
-const PORT = process.env.PORT || 5000;
-
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use("/api/products", productRoutes);
+app.use("/api/categories", categoryRoutes);
+app.use("/api/auth", authRoutes);
 
-// Home Route
 app.get("/", (req, res) => {
   res.json({
     success: true,
-    message: "🚀 Inventory SaaS Backend is running successfully!"
+    message: "Inventory SaaS API is running",
   });
 });
 
-// ==============================
-// API ROUTES
-// ==============================
+const PORT = process.env.PORT || 5000;
 
-// Product API
-app.use("/api/products", productRoutes);
-
-// Category API
-app.use("/api/categories", categoryRoutes);
-
-// Authentication API
-app.use("/api/auth", authRoutes);
-
-// ==============================
-// START SERVER
-// ==============================
 app.listen(PORT, () => {
-  console.log(`🚀 Server is running on http://localhost:${PORT}`);
+  console.log(`🚀 Server is running on port ${PORT}`);
 });

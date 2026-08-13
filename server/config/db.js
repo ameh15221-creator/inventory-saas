@@ -1,32 +1,28 @@
-// ======================================
-// PostgreSQL Database Connection
-// Inventory SaaS
-// ======================================
-
 const { Pool } = require("pg");
-require("dotenv").config();
+
+const databaseUrl = process.env.DATABASE_URL;
+
+if (!databaseUrl) {
+  console.error("❌ DATABASE_URL is not configured.");
+  process.exit(1);
+}
 
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-
-    // Required for some hosted PostgreSQL databases
-    ssl: process.env.NODE_ENV === "production"
-        ? { rejectUnauthorized: false }
-        : false
+  connectionString: databaseUrl,
+  ssl:
+    process.env.NODE_ENV === "production"
+      ? { rejectUnauthorized: false }
+      : false,
 });
 
-// Test database connection
-pool.connect()
-    .then((client) => {
-        console.log("✅ Connected to PostgreSQL");
-        client.release();
-    })
-    .catch((error) => {
-        console.error(
-            "❌ PostgreSQL connection failed:",
-            error.message
-        );
-    });
+pool
+  .connect()
+  .then((client) => {
+    console.log("✅ Connected to PostgreSQL");
+    client.release();
+  })
+  .catch((error) => {
+    console.error("❌ PostgreSQL connection failed:", error.message);
+  });
 
-// Export pool correctly
 module.exports = pool;
