@@ -110,21 +110,23 @@ function Login({ setUser }) {
         </form>
 
         <button
-          type="button"
-          onClick={() => setIsRegistering(true)}
-          style={{
-  marginTop: "12px",
-  background: "transparent",
-  border: "none",
-  color: "#2563eb",
-  cursor: "pointer",
-  textDecoration: "underline",
-  fontSize: "14px",
-  fontWeight: "600",
-}}
-        >
-          Create Account
-        </button>
+  type="button"
+  onClick={() => setIsRegistering(true)}
+  style={{
+    marginTop: "12px",
+    background: "#2563eb",
+    color: "#ffffff",
+    border: "none",
+    borderRadius: "6px",
+    padding: "10px 20px",
+    cursor: "pointer",
+    fontSize: "14px",
+    fontWeight: "600",
+  }}
+>
+  Create Account
+</button>
+
       </div>
     </div>
   );
