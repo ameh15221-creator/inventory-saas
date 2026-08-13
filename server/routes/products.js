@@ -7,92 +7,105 @@ const express = require("express");
 const router = express.Router();
 
 const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
+const { v2: cloudinary } = require("cloudinary");
 
 const pool = require("../config/db");
 const authMiddleware = require("../middleware/authMiddleware");
 
 
 // ======================================
-// CREATE UPLOAD FOLDER AUTOMATICALLY
+// CLOUDINARY CONFIG
 // ======================================
 
-const uploadFolder = path.join(__dirname, "../uploads");
-
-if (!fs.existsSync(uploadFolder)) {
-    fs.mkdirSync(uploadFolder);
-}
-
-
-// ======================================
-// MULTER STORAGE
-// ======================================
-
-const storage = multer.diskStorage({
-
-    destination: function (req, file, cb) {
-
-        cb(null, uploadFolder);
-
-    },
-
-
-    filename: function (req, file, cb) {
-
-        cb(
-            null,
-            Date.now() + path.extname(file.originalname)
-        );
-
-    }
-
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
+
+// ======================================
+// MULTER MEMORY STORAGE
+// ======================================
 
 const upload = multer({
-    storage: storage
+    storage: multer.memoryStorage()
 });
 
+
+// ======================================
+// CLOUDINARY UPLOAD FUNCTION
+// ======================================
+
+const uploadToCloudinary = (fileBuffer) => {
+
+    return new Promise((resolve, reject) => {
+
+        const uploadStream = cloudinary.uploader.upload_stream(
+            {
+                folder: "inventory-saas/products",
+                resource_type: "image"
+            },
+
+            (error, result) => {
+
+                if (error) {
+                    reject(error);
+                } else {
+                    resolve(result);
+                }
+
+            }
+        );
+
+        uploadStream.end(fileBuffer);
+
+    });
+
+};
 
 
 // ======================================
 // GET ALL PRODUCTS
 // ======================================
 
-router.get("/", authMiddleware, async (req, res)=>{
+router.get(
+    "/",
+    authMiddleware,
+    async (req, res) => {
 
-    try {
+        try {
 
-        const result = await pool.query(
-            "SELECT * FROM products ORDER BY id DESC"
-        );
+            const result = await pool.query(
+                "SELECT * FROM products ORDER BY id DESC"
+            );
 
+            res.json({
 
-        res.json({
+                success: true,
+                count: result.rows.length,
+                data: result.rows
 
-            success:true,
-            count:result.rows.length,
-            data:result.rows
+            });
 
-        });
+        } catch (error) {
 
+            console.error(
+                "Get Products Error:",
+                error.message
+            );
 
-    } catch(error){
+            res.status(500).json({
 
-        console.error(error.message);
+                success: false,
+                message: error.message
 
-        res.status(500).json({
+            });
 
-            success:false,
-            message:error.message
-
-        });
+        }
 
     }
-
-});
-
+);
 
 
 // ======================================
@@ -103,7 +116,9 @@ router.get(
     "/stock-movements",
     authMiddleware,
     async (req, res) => {
+
         try {
+
             const result = await pool.query(
                 `
                 SELECT
@@ -123,24 +138,31 @@ router.get(
             );
 
             res.json({
+
                 success: true,
                 count: result.rows.length,
                 data: result.rows
+
             });
 
         } catch (error) {
+
             console.error(
                 "Stock History Error:",
                 error
             );
 
             res.status(500).json({
+
                 success: false,
                 message: error.message,
                 detail: error.detail || null,
                 code: error.code || null
+
             });
+
         }
+
     }
 );
 
@@ -149,52 +171,54 @@ router.get(
 // GET SINGLE PRODUCT
 // ======================================
 
-router.get("/:id", authMiddleware, async(req,res)=>{
+router.get(
+    "/:id",
+    authMiddleware,
+    async (req, res) => {
 
-    try {
+        try {
 
-        const result = await pool.query(
-            "SELECT * FROM products WHERE id=$1",
-            [req.params.id]
-        );
+            const result = await pool.query(
+                "SELECT * FROM products WHERE id=$1",
+                [req.params.id]
+            );
 
+            if (result.rows.length === 0) {
 
-        if(result.rows.length===0){
+                return res.status(404).json({
 
-            return res.status(404).json({
+                    success: false,
+                    message: "Product not found"
 
-                success:false,
-                message:"Product not found"
+                });
+
+            }
+
+            res.json({
+
+                success: true,
+                data: result.rows[0]
+
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Get Product Error:",
+                error.message
+            );
+
+            res.status(500).json({
+
+                success: false,
+                message: error.message
 
             });
 
         }
 
-
-        res.json({
-
-            success:true,
-            data:result.rows[0]
-
-        });
-
-
-    }catch(error){
-
-        console.error(error.message);
-
-        res.status(500).json({
-
-            success:false,
-            message:error.message
-
-        });
-
     }
-
-});
-
-
+);
 
 
 // ======================================
@@ -202,93 +226,112 @@ router.get("/:id", authMiddleware, async(req,res)=>{
 // ======================================
 
 router.post(
-"/",
-authMiddleware,
-upload.single("image"),
-async(req,res)=>{
+    "/",
+    authMiddleware,
+    upload.single("image"),
+
+    async (req, res) => {
+
+        try {
+
+            console.log("BODY:", req.body);
+            console.log("FILE:", req.file);
+
+            const {
+                name,
+                category_id,
+                quantity,
+                price,
+                supplier
+            } = req.body;
 
 
-try{
+            // ======================================
+            // UPLOAD IMAGE TO CLOUDINARY
+            // ======================================
+
+            let image = null;
+
+            if (req.file) {
+
+                const cloudinaryResult =
+                    await uploadToCloudinary(
+                        req.file.buffer
+                    );
+
+                image = cloudinaryResult.secure_url;
+
+                console.log(
+                    "Cloudinary Image URL:",
+                    image
+                );
+
+            }
 
 
-console.log("BODY:",req.body);
-console.log("FILE:",req.file);
+            // ======================================
+            // INSERT PRODUCT
+            // ======================================
+
+            const result = await pool.query(
+
+                `
+                INSERT INTO products
+                (
+                    name,
+                    category_id,
+                    quantity,
+                    price,
+                    supplier,
+                    image
+                )
+
+                VALUES($1,$2,$3,$4,$5,$6)
+
+                RETURNING *
+                `,
+
+                [
+                    name,
+                    category_id,
+                    quantity,
+                    price,
+                    supplier,
+                    image
+                ]
+
+            );
 
 
-const {
-name,
-category_id,
-quantity,
-price,
-supplier
+            res.status(201).json({
 
-}=req.body;
+                success: true,
 
+                message:
+                    "Product created successfully",
 
+                data: result.rows[0]
 
-const image = req.file
-? req.file.filename
-: null;
+            });
 
+        } catch (error) {
 
+            console.error(
+                "Create Product Error:",
+                error
+            );
 
-const result = await pool.query(
+            res.status(500).json({
 
-`
-INSERT INTO products
-(name,category_id,quantity,price,supplier,image)
+                success: false,
+                message: error.message
 
-VALUES($1,$2,$3,$4,$5,$6)
+            });
 
-RETURNING *
-`,
+        }
 
-[
-name,
-category_id,
-quantity,
-price,
-supplier,
-image
-]
-
+    }
 );
-
-
-
-res.status(201).json({
-
-success:true,
-message:"Product created successfully",
-data:result.rows[0]
-
-});
-
-
-
-}catch(error){
-
-
-console.error(
-"Create Product Error:",
-error.message
-);
-
-
-res.status(500).json({
-
-success:false,
-message:error.message
-
-});
-
-
-}
-
-
-});
-
-
 
 
 // ======================================
@@ -299,10 +342,21 @@ router.put(
     "/:id",
     authMiddleware,
     upload.single("image"),
+
     async (req, res) => {
+
         try {
-            console.log("UPDATE BODY:", req.body);
-            console.log("UPDATE FILE:", req.file);
+
+            console.log(
+                "UPDATE BODY:",
+                req.body
+            );
+
+            console.log(
+                "UPDATE FILE:",
+                req.file
+            );
+
 
             const {
                 name,
@@ -312,41 +366,95 @@ router.put(
                 supplier
             } = req.body;
 
-            // Get the existing product
+
+            // ======================================
+            // GET EXISTING PRODUCT
+            // ======================================
+
             const oldProduct = await pool.query(
+
                 "SELECT * FROM products WHERE id=$1",
+
                 [req.params.id]
+
             );
 
+
             if (oldProduct.rows.length === 0) {
+
                 return res.status(404).json({
+
                     success: false,
                     message: "Product not found"
+
                 });
+
             }
 
-            const existingProduct = oldProduct.rows[0];
+
+            const existingProduct =
+                oldProduct.rows[0];
+
+
+            // ======================================
+            // STOCK CALCULATION
+            // ======================================
 
             const previousQuantity =
-                Number(existingProduct.quantity) || 0;
+                Number(
+                    existingProduct.quantity
+                ) || 0;
+
 
             const newQuantity =
                 Number(quantity) || 0;
 
+
             const quantityChange =
-                newQuantity - previousQuantity;
+                newQuantity -
+                previousQuantity;
 
-            let image = existingProduct.image;
 
-            // Keep existing image unless a new one is uploaded
+            // ======================================
+            // KEEP EXISTING IMAGE
+            // ======================================
+
+            let image =
+                existingProduct.image;
+
+
+            // ======================================
+            // UPLOAD NEW IMAGE
+            // ======================================
+
             if (req.file) {
-                image = req.file.filename;
+
+                const cloudinaryResult =
+                    await uploadToCloudinary(
+                        req.file.buffer
+                    );
+
+                image =
+                    cloudinaryResult.secure_url;
+
+
+                console.log(
+                    "New Cloudinary Image URL:",
+                    image
+                );
+
             }
 
-            // Update product
+
+            // ======================================
+            // UPDATE PRODUCT
+            // ======================================
+
             const result = await pool.query(
+
                 `
                 UPDATE products
+
                 SET
                     name=$1,
                     category_id=$2,
@@ -354,9 +462,12 @@ router.put(
                     price=$4,
                     supplier=$5,
                     image=$6
+
                 WHERE id=$7
+
                 RETURNING *
                 `,
+
                 [
                     name,
                     category_id,
@@ -366,11 +477,18 @@ router.put(
                     image,
                     req.params.id
                 ]
+
             );
 
-            // Record stock movement only when quantity changed
+
+            // ======================================
+            // RECORD STOCK MOVEMENT
+            // ======================================
+
             if (quantityChange !== 0) {
+
                 await pool.query(
+
                     `
                     INSERT INTO stock_movements
                     (
@@ -380,41 +498,70 @@ router.put(
                         quantity_change,
                         movement_type
                     )
-                    VALUES ($1, $2, $3, $4, $5)
+
+                    VALUES
+                    (
+                        $1,
+                        $2,
+                        $3,
+                        $4,
+                        $5
+                    )
                     `,
+
                     [
                         req.params.id,
                         previousQuantity,
                         newQuantity,
                         quantityChange,
+
                         quantityChange > 0
                             ? "IN"
                             : "OUT"
                     ]
+
                 );
+
             }
 
+
+            // ======================================
+            // RESPONSE
+            // ======================================
+
             res.json({
+
                 success: true,
-                message: "Product updated successfully",
+
+                message:
+                    "Product updated successfully",
+
                 data: result.rows[0]
+
             });
 
         } catch (error) {
+
             console.error(
                 "Update Product Error:",
-                error.message
+                error
             );
 
             res.status(500).json({
+
                 success: false,
                 message: error.message
+
             });
+
         }
+
     }
 );
 
 
-
+// ======================================
+// EXPORT ROUTER
+// ======================================
 
 module.exports = router;
