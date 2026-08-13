@@ -463,10 +463,7 @@ const handleSubmit = async (e) => {
           "Unable to save product"
       );
     }
-    toast.success(
-  `Stock updated to ${newQuantity}`
-);
-
+    
     // Refresh products from the backend
     await fetchProducts();
 
@@ -488,10 +485,11 @@ const handleSubmit = async (e) => {
         : "✅ Product added successfully"
     );
   } catch (err) {
+    
     console.error(
-      "Save Product Error:",
-      err
-    );
+  "Save Product Error:",
+  err
+);
 
     toast.error(
       err.message ||

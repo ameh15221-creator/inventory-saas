@@ -1,28 +1,21 @@
 const { Pool } = require("pg");
 
-const databaseUrl = process.env.DATABASE_URL;
-
-if (!databaseUrl) {
-  console.error("❌ DATABASE_URL is not configured.");
-  process.exit(1);
-}
-
 const pool = new Pool({
-  connectionString: databaseUrl,
-  ssl:
-    process.env.NODE_ENV === "production"
-      ? { rejectUnauthorized: false }
-      : false,
+  host: process.env.DB_HOST || "localhost",
+  port: Number(process.env.DB_PORT) || 5432,
+  database: process.env.DB_NAME || "inventory_saas",
+  user: process.env.DB_USER || "postgres",
+  password: process.env.DB_PASSWORD,
 });
 
-pool
-  .connect()
+pool.connect()
   .then((client) => {
-    console.log("✅ Connected to PostgreSQL");
+    console.log("PostgreSQL database connected successfully.");
     client.release();
   })
-  .catch((error) => {
-    console.error("❌ PostgreSQL connection failed:", error.message);
+  .catch((err) => {
+    console.error("Database connection failed:", err.message);
+    process.exit(1);
   });
 
 module.exports = pool;

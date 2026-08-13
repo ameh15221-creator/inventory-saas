@@ -3,7 +3,7 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 
 if (process.env.NODE_ENV !== "production") {
-  dotenv.config();
+  dotenv.config({ override: true });
 }
 
 console.log("=== INDEX.JS IS RUNNING ===");
