@@ -10,7 +10,10 @@ function Register({ onRegistered }) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const apiUrl = import.meta.env.VITE_API_URL;
+  const apiUrl =
+  import.meta.env.VITE_API_URL ||
+  "https://inventory-saas-c55p.onrender.com";
+
 
   const handleChange = (e) => {
     setFormData((prev) => ({
@@ -25,9 +28,11 @@ function Register({ onRegistered }) {
     setMessage("");
 
     if (!apiUrl) {
-      setMessage("API URL is not configured.");
-      return;
-    }
+  setMessage("API URL is not configured.");
+  setLoading(false);
+  return;
+}
+  
 
     setLoading(true);
 
