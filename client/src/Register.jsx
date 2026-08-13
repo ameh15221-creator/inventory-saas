@@ -27,13 +27,7 @@ function Register({ onRegistered }) {
 
     setMessage("");
 
-    if (!apiUrl) {
-  setMessage("API URL is not configured.");
-  setLoading(false);
-  return;
-}
   
-
     setLoading(true);
 
     try {

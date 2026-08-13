@@ -16,7 +16,7 @@ function Login({ setUser }) {
  const apiUrl =
   import.meta.env.VITE_API_URL ||
   "https://inventory-saas-c55p.onrender.com";
-  
+
   const handleChange = (e) => {
     setFormData((prev) => ({
       ...prev,
@@ -29,11 +29,7 @@ function Login({ setUser }) {
     setMessage("");
     setLoading(true);
 
-    if (!apiUrl) {
-      setMessage("API URL is not configured.");
-      setLoading(false);
-      return;
-    }
+    
 
     try {
       const response = await fetch(`${apiUrl}/api/auth/login`, {
