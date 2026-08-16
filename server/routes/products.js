@@ -559,6 +559,58 @@ router.put(
     }
 );
 
+// ======================================
+// DELETE PRODUCT
+// ======================================
+
+router.delete(
+    "/:id",
+    authMiddleware,
+    async (req, res) => {
+
+        try {
+
+            const { id } = req.params;
+
+            // Check if product exists
+            const product = await pool.query(
+                "SELECT * FROM products WHERE id=$1",
+                [id]
+            );
+
+            if (product.rows.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Product not found"
+                });
+            }
+
+            // Delete product
+            await pool.query(
+                "DELETE FROM products WHERE id=$1",
+                [id]
+            );
+
+            res.json({
+                success: true,
+                message: "Product deleted successfully"
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Delete Product Error:",
+                error
+            );
+
+            res.status(500).json({
+                success: false,
+                message: error.message
+            });
+
+        }
+    }
+);
 
 // ======================================
 // EXPORT ROUTER

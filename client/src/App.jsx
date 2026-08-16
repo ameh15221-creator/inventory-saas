@@ -286,12 +286,22 @@ const fetchStockMovements = async () => {
   // ==========================
 
   const fetchCategories = async () => {
-    try {
-      const res = await fetch(`${API_URL}/categories`, {
-        headers: {
-          Authorization: `Bearer ${getToken()}`,
-        },
-      });
+  try {
+
+    console.log(
+      "PRODUCT API URL:",
+      `${API_URL}/categories`
+    );
+
+    const res = await fetch(
+  `${API_URL}/categories?t=${Date.now()}`,
+  {
+    cache: "no-store",
+    headers: {
+      Authorization: `Bearer ${getToken()}`,
+    },
+  }
+);
 
       const data = await res.json();
 
@@ -300,15 +310,22 @@ const fetchStockMovements = async () => {
           data.message || "Failed to load categories"
         );
 
-        return;
-      }
+      return;
+}
 
-      setCategories(data.data || []);
-    } catch (err) {
-      console.error("Fetch Categories Error:", err);
+console.log("CATEGORY API STATUS:", res.status);
+console.log("CATEGORY API RESPONSE:", data);
 
-      toast.error("Failed to load categories");
-    }
+console.log("PRODUCT PAGE CATEGORIES STATE:", data.data);
+
+setCategories(data.data || []);
+
+
+} catch (err) {
+  console.error("Fetch Categories Error:", err);
+
+  toast.error("Failed to load categories");
+}
   };
 
   // ==========================
@@ -365,10 +382,16 @@ const fetchStockMovements = async () => {
 };
 
   useEffect(() => {
-    if (user) {
-      loadData();
-    }
-  }, [user]);
+  if (user) {
+    loadData();
+  }
+}, [user, page]);
+
+useEffect(() => {
+  if (user && page === "products") {
+    fetchCategories();
+  }
+}, [user, page]);
 
   // ==========================
   // HANDLE CHANGE
@@ -466,10 +489,18 @@ const handleSubmit = async (e) => {
     }
     
     // Refresh products from the backend
-    await fetchProducts();
+await fetchProducts();
 
-    // Reset form
-    setFormData({
+addActivity(
+  isEditing ? "Product Updated" : "Product Added",
+  isEditing
+    ? `${formData.name} was updated in inventory.`
+    : `${formData.name} was added to inventory.`,
+  isEditing ? "✏️" : "➕"
+);
+
+// Reset form
+setFormData({
       name: "",
       category_id: "",
       quantity: "",
@@ -566,9 +597,15 @@ const handleStockAdjustment = async (
     }
 
   
-    await fetchProducts();
+   await fetchProducts();
 
-    setHighlightedProductId(product.id);
+addActivity(
+  change > 0 ? "Stock Increased" : "Stock Decreased",
+  `${product.name} stock changed from ${currentQuantity} to ${newQuantity}.`,
+  change > 0 ? "📈" : "📉"
+);
+
+setHighlightedProductId(product.id);
 
     toast.success(
       `Stock updated to ${newQuantity}`

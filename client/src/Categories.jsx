@@ -3,10 +3,11 @@ import { toast } from "react-toastify";
 import "./App.css";
 
 
-const API_URL = "http://localhost:5000/api";
+const API_URL = "https://inventory-saas-c55p.onrender.com/api";
 
 
 function Categories() {
+
 
 
   const [categories, setCategories] = useState([]);
@@ -28,19 +29,27 @@ function Categories() {
 
   // FETCH CATEGORIES
 
-  const fetchCategories = async () => {
+ const fetchCategories = async () => {
 
-    try {
+  try {
 
-      const res = await fetch(
-        `${API_URL}/categories`
-      );
+    const res = await fetch(
+      `${API_URL}/categories`,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }
+    );
 
 
       const data = await res.json();
 
+     console.log("RENDER CATEGORIES:", data.data);
 
-      setCategories(data.data || []);
+
+
+setCategories(data.data || []);
 
 
     } catch(error) {
@@ -118,13 +127,10 @@ function Categories() {
         method,
 
 
-        headers: {
-
-          "Content-Type":
-          "application/json"
-
-        },
-
+       headers: {
+  "Content-Type": "application/json",
+  Authorization: `Bearer ${localStorage.getItem("token")}`,
+},
 
         body:
         JSON.stringify(formData)
@@ -246,11 +252,14 @@ function Categories() {
 
 
       const res = await fetch(
-        `${API_URL}/categories/${id}`,
-        {
-          method: "DELETE"
-        }
-      );
+  `${API_URL}/categories/${id}`,
+  {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("token")}`,
+    },
+  }
+);
 
 
 
