@@ -28,7 +28,10 @@ import {
    Legend,
 } from "recharts";
 
-const API_URL = "https://inventory-saas-c55p.onrender.com/api";
+const API_URL = (
+  import.meta.env.VITE_API_URL ||
+  "https://inventory-saas-c55p.onrender.com"
+).replace(/\/$/, "") + "/api";
 
 
 const getToken = () => localStorage.getItem("token");
@@ -960,13 +963,22 @@ const paginatedProducts =
   // ==========================
 
   const getImageUrl = (image) => {
-    if (!image) {
-      return null;
-    }
+  if (!image) {
+    return null;
+  }
 
-    if (image.startsWith("http")) {
-      return image;
-    }
+  if (image.startsWith("http")) {
+    return image;
+  }
+
+  const backendUrl = (
+    import.meta.env.VITE_API_URL ||
+    "https://inventory-saas-c55p.onrender.com"
+  ).replace(/\/$/, "");
+
+  return `${backendUrl}/uploads/${image}`;
+};
+
 
    return `https://inventory-saas-c55p.onrender.com/uploads/${image}`;
   };
@@ -1907,7 +1919,6 @@ const paginatedProducts =
         )}
 
       </main>
-
       {/* ==========================
           TOAST NOTIFICATIONS
       ========================== */}
@@ -1925,7 +1936,5 @@ const paginatedProducts =
 
     </div>
   );
-}
 
 export default App;
-

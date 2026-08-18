@@ -1,74 +1,163 @@
-const express = require("express");
-const router = express.Router();
-const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const pool = require("../config/db");
 
-// ==============================
-// LOGIN
-// ==============================
+// =====================================================
+// AUTHENTICATION MIDDLEWARE
+// =====================================================
 
-router.post("/login", async (req, res) => {
+const authMiddleware = (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    console.log("🔥 AUTH MIDDLEWARE CALLED");
 
-    const result = await pool.query(
-      "SELECT * FROM users WHERE email = $1",
-      [email]
-    );
+    // -----------------------------
+    // Get Authorization header
+    // -----------------------------
 
-    if (result.rows.length === 0) {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
       return res.status(401).json({
         success: false,
-        message: "Invalid email or password"
+        message: "Access denied. No token provided.",
       });
     }
 
-    const user = result.rows[0];
+    // -----------------------------
+    // Check Bearer format
+    // -----------------------------
 
-    const validPassword = await bcrypt.compare(password, user.password);
-
-    if (!validPassword) {
+    if (!authHeader.startsWith("Bearer ")) {
       return res.status(401).json({
         success: false,
-        message: "Invalid email or password"
+        message: "Access denied. Invalid token format.",
       });
     }
 
-    console.log("JWT_SECRET:", process.env.JWT_SECRET);
+    // -----------------------------
+    // Extract token
+    // -----------------------------
 
-    const token = jwt.sign(
-      {
-        id: user.id,
-        email: user.email,
-        role: user.role
-      },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: "24h"
-      }
-    );
+    const token = authHeader
+      .split(" ")[1];
 
-    res.json({
-      success: true,
-      message: "Login successful",
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: "Access denied. Token missing.",
+      });
+    }
+
+    // -----------------------------
+    // Verify token
+    // -----------------------------
+
+    const decoded = jwt.verify(
       token,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role
-      }
-    });
+      process.env.JWT_SECRET
+    );
+
+    // -----------------------------
+    // Normalize role
+    // -----------------------------
+
+    decoded.role = String(
+      decoded.role || "STAFF"
+    ).toUpperCase();
+
+    // -----------------------------
+    // Attach user to request
+    // -----------------------------
+
+    req.user = decoded;
+
+    console.log(
+      "Authenticated User:",
+      req.user
+    );
+
+    next();
 
   } catch (error) {
-    console.error("Login Error:", error);
+    console.error(
+      "Auth Middleware Error:",
+      error
+    );
 
-    res.status(500).json({
+    return res.status(401).json({
       success: false,
-      message: "Server error"
+      message: "Invalid or expired token.",
     });
   }
-});
+};
 
-module.exports = router;
+// =====================================================
+// ROLE AUTHORIZATION
+// =====================================================
+// Example:
+//
+// router.get(
+//   "/something",
+//   authMiddleware,
+//   authorizeRoles("CEO", "MANAGER"),
+//   controller
+// );
+//
+// =====================================================
+
+const authorizeRoles = (...allowedRoles) => {
+  return (req, res, next) => {
+    try {
+      // User must already be authenticated
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message: "Authentication required.",
+        });
+      }
+
+      const userRole = String(
+        req.user.role || ""
+      ).toUpperCase();
+
+      const normalizedRoles =
+        allowedRoles.map((role) =>
+          String(role).toUpperCase()
+        );
+
+      // -----------------------------
+      // Check permission
+      // -----------------------------
+
+      if (
+        !normalizedRoles.includes(userRole)
+      ) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "Access denied. You do not have permission to perform this action.",
+        });
+      }
+
+      next();
+
+    } catch (error) {
+      console.error(
+        "Role Authorization Error:",
+        error
+      );
+
+      return res.status(403).json({
+        success: false,
+        message: "Access denied.",
+      });
+    }
+  };
+};
+
+// =====================================================
+// EXPORT
+// =====================================================
+
+module.exports = authMiddleware;
+
+module.exports.authorizeRoles =
+  authorizeRoles;

@@ -1,33 +1,49 @@
 import { toast } from "react-toastify";
 import "./App.css";
 
-
 function Profile({ user }) {
-
 
   const handleCopyEmail = () => {
 
-    if(user?.email){
+    if (user?.email) {
 
-      navigator.clipboard.writeText(
-        user.email
-      );
+      navigator.clipboard.writeText(user.email);
 
-      toast.success(
-        "Email copied!"
-      );
+      toast.success("Email copied!");
 
     }
 
   };
 
+  const getRoleLabel = (role) => {
 
+    switch (role?.toLowerCase()) {
+
+      case "ceo":
+        return "👑 CEO";
+
+      case "manager":
+        return "🧑‍💼 Manager";
+
+      case "cashier":
+        return "💰 Cashier";
+
+      case "staff":
+        return "👷 Staff";
+
+      case "admin":
+        return "🛡️ Administrator";
+
+      default:
+        return role || "User";
+
+    }
+
+  };
 
   return (
 
-
     <div className="main">
-
 
       <header>
 
@@ -36,35 +52,22 @@ function Profile({ user }) {
         </h1>
 
         <p>
-          Manage your account information
+          Manage your supermarket account information
         </p>
 
       </header>
 
 
-
-
-
       <section className="profile-card">
 
-
         <div className="profile-avatar">
-
           👤
-
         </div>
 
 
-
-
-
         <h2>
-
-          {user?.name || "Admin User"}
-
+          {user?.name || "User"}
         </h2>
-
-
 
 
         <p>
@@ -80,8 +83,6 @@ function Profile({ user }) {
         </p>
 
 
-
-
         <p>
 
           <strong>
@@ -90,50 +91,31 @@ function Profile({ user }) {
 
           {" "}
 
-          {user?.role || "Admin"}
+          {getRoleLabel(user?.role)}
 
         </p>
 
 
-
-
-
         <button
-
           className="edit-btn"
-
           onClick={handleCopyEmail}
-
         >
-
           📋 Copy Email
-
         </button>
-
-
 
       </section>
 
 
-
-
-
-
-
       <section className="table-section">
-
 
         <h2>
           Account Information
         </h2>
 
 
-
         <table>
 
-
           <tbody>
-
 
             <tr>
 
@@ -142,12 +124,10 @@ function Profile({ user }) {
               </td>
 
               <td>
-                {user?.name || "Admin User"}
+                {user?.name || "User"}
               </td>
 
             </tr>
-
-
 
 
             <tr>
@@ -163,8 +143,6 @@ function Profile({ user }) {
             </tr>
 
 
-
-
             <tr>
 
               <td>
@@ -172,11 +150,10 @@ function Profile({ user }) {
               </td>
 
               <td>
-                {user?.role || "Administrator"}
+                {getRoleLabel(user?.role)}
               </td>
 
             </tr>
-
 
 
             <tr>
@@ -191,25 +168,16 @@ function Profile({ user }) {
 
             </tr>
 
-
-
           </tbody>
-
 
         </table>
 
-
       </section>
 
-
-
-
     </div>
-
 
   );
 
 }
-
 
 export default Profile;

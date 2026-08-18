@@ -1,133 +1,196 @@
 import { useState } from "react";
+import { toast } from "react-toastify";
 import "./Login.css";
-import Register from "../Register";
 
-function Login({ setUser }) {
-  const [isRegistering, setIsRegistering] = useState(false);
-
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
-
-  const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(false);
-
- const apiUrl =
+const API_URL =
   import.meta.env.VITE_API_URL ||
   "https://inventory-saas-c55p.onrender.com";
 
-  const handleChange = (e) => {
-    setFormData((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }));
-  };
+function Login({ setUser }) {
 
-  const handleSubmit = async (e) => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async (e) => {
+
     e.preventDefault();
-    setMessage("");
+
     setLoading(true);
 
-    
-
     try {
-      const response = await fetch(`${apiUrl}/api/auth/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
 
-      const data = await response.json();
+      const res = await fetch(
+        `${API_URL}/api/auth/login`,
+        {
+          method: "POST",
 
-      if (!response.ok || !data.success) {
-        setMessage(data.message || "Invalid email or password.");
-        return;
+          headers: {
+            "Content-Type": "application/json",
+          },
+
+          body: JSON.stringify({
+            email,
+            password,
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      console.log("LOGIN RESPONSE:", data);
+
+      if (!res.ok || !data.success) {
+
+        throw new Error(
+          data.message ||
+          "Invalid email or password"
+        );
+
       }
 
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
+      // ==========================
+      // VERIFY USER DATA
+      // ==========================
+
+      console.log(
+        "LOGGED IN USER:",
+        data.user
+      );
+
+      console.log(
+        "LOGGED IN ROLE:",
+        data.user?.role
+      );
+
+      // ==========================
+      // SAVE TOKEN
+      // ==========================
+
+      localStorage.setItem(
+        "token",
+        data.token
+      );
+
+      // ==========================
+      // SAVE COMPLETE USER
+      // ==========================
+
+      localStorage.setItem(
+        "user",
+        JSON.stringify(data.user)
+      );
+
+      // ==========================
+      // UPDATE APP USER
+      // ==========================
 
       setUser(data.user);
+
+      toast.success(
+        `Welcome ${data.user?.name || "User"}!`
+      );
+
     } catch (error) {
-      console.error("Login error:", error);
-      setMessage("Cannot connect to server.");
+
+      console.error(
+        "LOGIN ERROR:",
+        error
+      );
+
+      toast.error(
+        error.message ||
+        "Login failed"
+      );
+
     } finally {
+
       setLoading(false);
+
     }
+
   };
 
-  if (isRegistering) {
-    return (
-      <Register
-        onRegistered={() => {
-          setIsRegistering(false);
-          setMessage("Registration successful! You can now sign in.");
-        }}
-      />
-    );
-  }
 
   return (
-    <div className="login-page">
-      <div className="login-card">
-        <h1>Inventory SaaS</h1>
 
-        <p className="subtitle">
-          Manage your business inventory easily
+    <div className="login-page">
+
+      <div className="login-card">
+
+        <div className="login-icon">
+          📦
+        </div>
+
+        <h1>
+          Inventory SaaS
+        </h1>
+
+        <p>
+          Supermarket Management System
         </p>
 
-        <form onSubmit={handleSubmit}>
-          <input
-            type="email"
-            name="email"
-            placeholder="Email address"
-            value={formData.email}
-            onChange={handleChange}
-            required
-            disabled={loading}
-          />
 
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={formData.password}
-            onChange={handleChange}
-            required
-            disabled={loading}
-          />
+        <form onSubmit={handleLogin}>
 
-          <button type="submit" disabled={loading}>
-            {loading ? "Signing In..." : "Sign In"}
+          <div className="form-group">
+
+            <label>
+              Email
+            </label>
+
+            <input
+              type="email"
+              placeholder="Enter your email"
+              value={email}
+              onChange={(e) =>
+                setEmail(e.target.value)
+              }
+              required
+            />
+
+          </div>
+
+
+          <div className="form-group">
+
+            <label>
+              Password
+            </label>
+
+            <input
+              type="password"
+              placeholder="Enter your password"
+              value={password}
+              onChange={(e) =>
+                setPassword(e.target.value)
+              }
+              required
+            />
+
+          </div>
+
+
+          <button
+            type="submit"
+            disabled={loading}
+          >
+
+            {loading
+              ? "Logging in..."
+              : "🔐 Login"}
+
           </button>
 
-          {message && <p className="message">{message}</p>}
         </form>
 
-        <button
-  type="button"
-  onClick={() => setIsRegistering(true)}
-  style={{
-    marginTop: "12px",
-    background: "#2563eb",
-    color: "#ffffff",
-    border: "none",
-    borderRadius: "6px",
-    padding: "10px 20px",
-    cursor: "pointer",
-    fontSize: "14px",
-    fontWeight: "600",
-  }}
->
-  Create Account
-</button>
-
       </div>
+
     </div>
+
   );
+
 }
 
 export default Login;
