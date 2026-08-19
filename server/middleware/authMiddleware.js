@@ -158,6 +158,3 @@ const authorizeRoles = (...allowedRoles) => {
 // =====================================================
 
 module.exports = authMiddleware;
-
-module.exports.authorizeRoles =
-  authorizeRoles;

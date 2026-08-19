@@ -1,84 +1,162 @@
 import { useState } from "react";
+import { toast } from "react-toastify";
+import "./Login.css";
 
-function Login({ onLogin }) {
-  const [formData, setFormData] = useState({
-    email: "",
-    password: ""
-  });
+const API_URL = (
+  import.meta.env.VITE_API_URL ||
+  "http://127.0.0.1:5001"
+).replace(/\/$/, "");
 
-  const [message, setMessage] = useState("");
+function Login({ setUser }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
-
-  const handleSubmit = async (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
 
+    console.log("🔥 LOGIN BUTTON CLICKED");
+    console.log("📧 EMAIL:", email);
+    console.log("🔗 LOGIN URL:", `${API_URL}/api/auth/login`);
+
+    setLoading(true);
+
     try {
-      const response = await fetch("http://localhost:5000/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(formData)
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        localStorage.setItem("token", result.token);
-        localStorage.setItem("user", JSON.stringify(result.user));
-
-        setMessage("✅ Login successful!");
-
-        if (onLogin) {
-          onLogin(result.user);
+      const res = await fetch(
+        `${API_URL}/api/auth/login`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email,
+            password,
+          }),
         }
-      } else {
-        setMessage(result.message);
+      );
+
+      console.log("🔥 RESPONSE STATUS:", res.status);
+
+      const data = await res.json();
+
+      console.log("🔥 LOGIN RESPONSE:", data);
+
+      if (!res.ok || !data.success) {
+        throw new Error(
+          data.message || "Invalid email or password"
+        );
       }
 
+      console.log("✅ LOGIN SUCCESS");
+      console.log("👤 USER:", data.user);
+
+      localStorage.setItem(
+        "token",
+        data.token
+      );
+
+      localStorage.setItem(
+        "user",
+        JSON.stringify(data.user)
+      );
+
+      setUser(data.user);
+
+      toast.success(
+        `Welcome ${data.user?.name || "User"}!`
+      );
+
     } catch (error) {
-      console.error(error);
-      setMessage("Server connection failed.");
+      console.error(
+        "❌ LOGIN ERROR:",
+        error
+      );
+
+      toast.error(
+        error.message ||
+        "Login failed"
+      );
+
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="login-container">
-      <h1>Inventory SaaS Login</h1>
+    <div className="login-page">
 
-      <form onSubmit={handleSubmit} className="login-form">
+      <div className="login-card">
 
-        <input
-          type="email"
-          name="email"
-          placeholder="Email Address"
-          value={formData.email}
-          onChange={handleChange}
-          required
-        />
+        <div className="login-icon">
+          📦
+        </div>
 
-        <input
-          type="password"
-          name="password"
-          placeholder="Password"
-          value={formData.password}
-          onChange={handleChange}
-          required
-        />
+        <h1>
+          Inventory SaaS
+        </h1>
 
-        <button type="submit">
-          Login
-        </button>
+        <p>
+          Supermarket Management System
+        </p>
 
-      </form>
+        <form onSubmit={handleLogin}>
 
-      <p>{message}</p>
+          <div className="form-group">
+
+            <label htmlFor="login-email">
+              Email
+            </label>
+
+            <input
+              id="login-email"
+              type="email"
+              name="email"
+              placeholder="Enter your email"
+              value={email}
+              onChange={(e) =>
+                setEmail(e.target.value)
+              }
+              autoComplete="email"
+              required
+            />
+
+          </div>
+
+          <div className="form-group">
+
+            <label htmlFor="login-password">
+              Password
+            </label>
+
+            <input
+              id="login-password"
+              type="password"
+              name="password"
+              placeholder="Enter your password"
+              value={password}
+              onChange={(e) =>
+                setPassword(e.target.value)
+              }
+              autoComplete="current-password"
+              required
+            />
+
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+          >
+            {loading
+              ? "Logging in..."
+              : "🔐 Login"}
+          </button>
+
+        </form>
+
+      </div>
+
     </div>
   );
 }

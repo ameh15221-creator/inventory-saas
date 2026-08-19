@@ -1,3 +1,4 @@
+
 // ==============================
 // ROLE AUTHORIZATION MIDDLEWARE
 // ==============================
@@ -5,7 +6,10 @@
 const allowRoles = (...allowedRoles) => {
   return (req, res, next) => {
 
-    // Make sure the user is authenticated
+    // ==============================
+    // MAKE SURE USER IS AUTHENTICATED
+    // ==============================
+
     if (!req.user) {
       return res.status(401).json({
         success: false,
@@ -13,15 +17,48 @@ const allowRoles = (...allowedRoles) => {
       });
     }
 
-    // Check user's role
-    if (!allowedRoles.includes(req.user.role)) {
+    // ==============================
+    // NORMALIZE USER ROLE
+    // ==============================
+
+    const userRole = String(
+      req.user.role || ""
+    ).toUpperCase();
+
+    // ==============================
+    // NORMALIZE ALLOWED ROLES
+    // ==============================
+
+    const normalizedRoles = allowedRoles.map(
+      (role) =>
+        String(role).toUpperCase()
+    );
+
+    // ==============================
+    // CHECK PERMISSION
+    // ==============================
+
+    if (!normalizedRoles.includes(userRole)) {
+
+      console.log(
+        `ROLE ACCESS DENIED: ${userRole}`
+      );
+
       return res.status(403).json({
         success: false,
-        message: "Access denied. You do not have permission."
+        message:
+          "Access denied. You do not have permission."
       });
     }
 
-    // User has permission
+    // ==============================
+    // ACCESS GRANTED
+    // ==============================
+
+    console.log(
+      `ROLE ACCESS GRANTED: ${userRole}`
+    );
+
     next();
   };
 };

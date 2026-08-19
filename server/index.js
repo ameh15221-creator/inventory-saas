@@ -30,6 +30,14 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+console.log("🔥 ABOUT TO REGISTER MIDDLEWARE");
+
+// TEMPORARY REQUEST LOGGER
+app.use((req, res, next) => {
+  console.log("🔥 REQUEST RECEIVED:", req.method, req.url);
+  next();
+});
+
 // Serve uploaded product images
 app.use(
   "/uploads",
@@ -41,7 +49,9 @@ app.use("/api/categories", categoryRoutes);
 app.use("/api/auth", authRoutes);
 
 app.get("/", (req, res) => {
-  res.json({
+  console.log("🔥 ROOT ROUTE HIT");
+
+  res.status(200).json({
     success: true,
     message: "Inventory SaaS API is running",
   });
@@ -49,6 +59,14 @@ app.get("/", (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server is running on port ${PORT}`);
+const server = app.listen(PORT, "127.0.0.1", () => {
+  console.log(`🚀 Server is running on http://127.0.0.1:${PORT}`);
+});
+
+server.on("error", (error) => {
+  console.error("❌ SERVER ERROR:", error);
+});
+
+server.on("connection", (socket) => {
+  console.log("🔌 TCP CONNECTION RECEIVED");
 });

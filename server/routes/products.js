@@ -1,5 +1,5 @@
 // ======================================
-// Products Routes
+// PRODUCTS ROUTES
 // Inventory SaaS
 // ======================================
 
@@ -10,7 +10,9 @@ const multer = require("multer");
 const { v2: cloudinary } = require("cloudinary");
 
 const pool = require("../config/db");
+
 const authMiddleware = require("../middleware/authMiddleware");
+const allowRoles = require("../middleware/roleMiddleware");
 
 
 // ======================================
@@ -41,32 +43,33 @@ const uploadToCloudinary = (fileBuffer) => {
 
     return new Promise((resolve, reject) => {
 
-        const uploadStream = cloudinary.uploader.upload_stream(
-            {
-                folder: "inventory-saas/products",
-                resource_type: "image"
-            },
+        const uploadStream =
+            cloudinary.uploader.upload_stream(
+                {
+                    folder: "inventory-saas/products",
+                    resource_type: "image"
+                },
 
-            (error, result) => {
+                (error, result) => {
 
-                if (error) {
-                    reject(error);
-                } else {
-                    resolve(result);
+                    if (error) {
+                        reject(error);
+                    } else {
+                        resolve(result);
+                    }
+
                 }
-
-            }
-        );
+            );
 
         uploadStream.end(fileBuffer);
-
     });
-
 };
 
 
 // ======================================
 // GET ALL PRODUCTS
+// ======================================
+// CEO / MANAGER / CASHIER / STAFF
 // ======================================
 
 router.get(
@@ -77,10 +80,14 @@ router.get(
         try {
 
             const result = await pool.query(
-                "SELECT * FROM products ORDER BY id DESC"
+                `
+                SELECT *
+                FROM products
+                ORDER BY id DESC
+                `
             );
 
-            res.json({
+            return res.json({
 
                 success: true,
                 count: result.rows.length,
@@ -95,21 +102,21 @@ router.get(
                 error.message
             );
 
-            res.status(500).json({
+            return res.status(500).json({
 
                 success: false,
                 message: error.message
 
             });
-
         }
-
     }
 );
 
 
 // ======================================
 // GET STOCK MOVEMENT HISTORY
+// ======================================
+// CEO / MANAGER / CASHIER / STAFF
 // ======================================
 
 router.get(
@@ -130,14 +137,19 @@ router.get(
                     sm.quantity_change,
                     sm.movement_type,
                     sm.created_at
+
                 FROM stock_movements sm
+
                 LEFT JOIN products p
                     ON p.id = sm.product_id
-                ORDER BY sm.created_at DESC, sm.id DESC
+
+                ORDER BY
+                    sm.created_at DESC,
+                    sm.id DESC
                 `
             );
 
-            res.json({
+            return res.json({
 
                 success: true,
                 count: result.rows.length,
@@ -152,7 +164,7 @@ router.get(
                 error
             );
 
-            res.status(500).json({
+            return res.status(500).json({
 
                 success: false,
                 message: error.message,
@@ -160,15 +172,15 @@ router.get(
                 code: error.code || null
 
             });
-
         }
-
     }
 );
 
 
 // ======================================
 // GET SINGLE PRODUCT
+// ======================================
+// CEO / MANAGER / CASHIER / STAFF
 // ======================================
 
 router.get(
@@ -179,7 +191,11 @@ router.get(
         try {
 
             const result = await pool.query(
-                "SELECT * FROM products WHERE id=$1",
+                `
+                SELECT *
+                FROM products
+                WHERE id = $1
+                `,
                 [req.params.id]
             );
 
@@ -191,10 +207,9 @@ router.get(
                     message: "Product not found"
 
                 });
-
             }
 
-            res.json({
+            return res.json({
 
                 success: true,
                 data: result.rows[0]
@@ -208,15 +223,13 @@ router.get(
                 error.message
             );
 
-            res.status(500).json({
+            return res.status(500).json({
 
                 success: false,
                 message: error.message
 
             });
-
         }
-
     }
 );
 
@@ -224,18 +237,33 @@ router.get(
 // ======================================
 // CREATE PRODUCT
 // ======================================
+// CEO / MANAGER ONLY
+// ======================================
 
 router.post(
     "/",
     authMiddleware,
+    allowRoles("CEO", "MANAGER"),
     upload.single("image"),
 
     async (req, res) => {
 
         try {
 
-            console.log("BODY:", req.body);
-            console.log("FILE:", req.file);
+            console.log(
+                "CREATE PRODUCT USER:",
+                req.user
+            );
+
+            console.log(
+                "BODY:",
+                req.body
+            );
+
+            console.log(
+                "FILE:",
+                req.file
+            );
 
             const {
                 name,
@@ -247,7 +275,28 @@ router.post(
 
 
             // ======================================
-            // UPLOAD IMAGE TO CLOUDINARY
+            // VALIDATION
+            // ======================================
+
+            if (
+                !name ||
+                !category_id ||
+                quantity === undefined ||
+                price === undefined
+            ) {
+
+                return res.status(400).json({
+
+                    success: false,
+                    message:
+                        "Name, category, quantity and price are required."
+
+                });
+            }
+
+
+            // ======================================
+            // UPLOAD IMAGE
             // ======================================
 
             let image = null;
@@ -259,13 +308,13 @@ router.post(
                         req.file.buffer
                     );
 
-                image = cloudinaryResult.secure_url;
+                image =
+                    cloudinaryResult.secure_url;
 
                 console.log(
                     "Cloudinary Image URL:",
                     image
                 );
-
             }
 
 
@@ -286,31 +335,85 @@ router.post(
                     image
                 )
 
-                VALUES($1,$2,$3,$4,$5,$6)
+                VALUES
+                (
+                    $1,
+                    $2,
+                    $3,
+                    $4,
+                    $5,
+                    $6
+                )
 
                 RETURNING *
                 `,
 
                 [
-                    name,
-                    category_id,
-                    quantity,
-                    price,
-                    supplier,
+                    name.trim(),
+                    Number(category_id),
+                    Number(quantity),
+                    Number(price),
+                    supplier || "",
                     image
                 ]
-
             );
 
 
-            res.status(201).json({
+            // ======================================
+            // RECORD INITIAL STOCK
+            // ======================================
+
+            const initialQuantity =
+                Number(quantity);
+
+            if (initialQuantity > 0) {
+
+                await pool.query(
+
+                    `
+                    INSERT INTO stock_movements
+                    (
+                        product_id,
+                        previous_quantity,
+                        new_quantity,
+                        quantity_change,
+                        movement_type
+                    )
+
+                    VALUES
+                    (
+                        $1,
+                        $2,
+                        $3,
+                        $4,
+                        $5
+                    )
+                    `,
+
+                    [
+                        result.rows[0].id,
+                        0,
+                        initialQuantity,
+                        initialQuantity,
+                        "IN"
+                    ]
+                );
+            }
+
+
+            // ======================================
+            // RESPONSE
+            // ======================================
+
+            return res.status(201).json({
 
                 success: true,
 
                 message:
                     "Product created successfully",
 
-                data: result.rows[0]
+                data:
+                    result.rows[0]
 
             });
 
@@ -321,15 +424,13 @@ router.post(
                 error
             );
 
-            res.status(500).json({
+            return res.status(500).json({
 
                 success: false,
                 message: error.message
 
             });
-
         }
-
     }
 );
 
@@ -337,15 +438,23 @@ router.post(
 // ======================================
 // UPDATE PRODUCT
 // ======================================
+// CEO / MANAGER ONLY
+// ======================================
 
 router.put(
     "/:id",
     authMiddleware,
+    allowRoles("CEO", "MANAGER"),
     upload.single("image"),
 
     async (req, res) => {
 
         try {
+
+            console.log(
+                "UPDATE PRODUCT USER:",
+                req.user
+            );
 
             console.log(
                 "UPDATE BODY:",
@@ -371,16 +480,22 @@ router.put(
             // GET EXISTING PRODUCT
             // ======================================
 
-            const oldProduct = await pool.query(
+            const oldProduct =
+                await pool.query(
 
-                "SELECT * FROM products WHERE id=$1",
+                    `
+                    SELECT *
+                    FROM products
+                    WHERE id = $1
+                    `,
 
-                [req.params.id]
+                    [req.params.id]
+                );
 
-            );
 
-
-            if (oldProduct.rows.length === 0) {
+            if (
+                oldProduct.rows.length === 0
+            ) {
 
                 return res.status(404).json({
 
@@ -388,7 +503,6 @@ router.put(
                     message: "Product not found"
 
                 });
-
             }
 
 
@@ -405,10 +519,8 @@ router.put(
                     existingProduct.quantity
                 ) || 0;
 
-
             const newQuantity =
                 Number(quantity) || 0;
-
 
             const quantityChange =
                 newQuantity -
@@ -437,12 +549,10 @@ router.put(
                 image =
                     cloudinaryResult.secure_url;
 
-
                 console.log(
                     "New Cloudinary Image URL:",
                     image
                 );
-
             }
 
 
@@ -450,42 +560,44 @@ router.put(
             // UPDATE PRODUCT
             // ======================================
 
-            const result = await pool.query(
+            const result =
+                await pool.query(
 
-                `
-                UPDATE products
+                    `
+                    UPDATE products
 
-                SET
-                    name=$1,
-                    category_id=$2,
-                    quantity=$3,
-                    price=$4,
-                    supplier=$5,
-                    image=$6
+                    SET
+                        name = $1,
+                        category_id = $2,
+                        quantity = $3,
+                        price = $4,
+                        supplier = $5,
+                        image = $6
 
-                WHERE id=$7
+                    WHERE id = $7
 
-                RETURNING *
-                `,
+                    RETURNING *
+                    `,
 
-                [
-                    name,
-                    category_id,
-                    newQuantity,
-                    price,
-                    supplier,
-                    image,
-                    req.params.id
-                ]
-
-            );
+                    [
+                        name.trim(),
+                        Number(category_id),
+                        newQuantity,
+                        Number(price),
+                        supplier || "",
+                        image,
+                        req.params.id
+                    ]
+                );
 
 
             // ======================================
             // RECORD STOCK MOVEMENT
             // ======================================
 
-            if (quantityChange !== 0) {
+            if (
+                quantityChange !== 0
+            ) {
 
                 await pool.query(
 
@@ -519,9 +631,7 @@ router.put(
                             ? "IN"
                             : "OUT"
                     ]
-
                 );
-
             }
 
 
@@ -529,14 +639,15 @@ router.put(
             // RESPONSE
             // ======================================
 
-            res.json({
+            return res.json({
 
                 success: true,
 
                 message:
                     "Product updated successfully",
 
-                data: result.rows[0]
+                data:
+                    result.rows[0]
 
             });
 
@@ -547,53 +658,98 @@ router.put(
                 error
             );
 
-            res.status(500).json({
+            return res.status(500).json({
 
                 success: false,
                 message: error.message
 
             });
-
         }
-
     }
 );
 
+
 // ======================================
 // DELETE PRODUCT
+// ======================================
+// CEO / MANAGER ONLY
 // ======================================
 
 router.delete(
     "/:id",
     authMiddleware,
+    allowRoles("CEO", "MANAGER"),
+
     async (req, res) => {
 
         try {
 
-            const { id } = req.params;
-
-            // Check if product exists
-            const product = await pool.query(
-                "SELECT * FROM products WHERE id=$1",
-                [id]
+            console.log(
+                "DELETE PRODUCT USER:",
+                req.user
             );
 
-            if (product.rows.length === 0) {
+
+            const { id } =
+                req.params;
+
+
+            // ======================================
+            // CHECK PRODUCT
+            // ======================================
+
+            const product =
+                await pool.query(
+
+                    `
+                    SELECT *
+                    FROM products
+                    WHERE id = $1
+                    `,
+
+                    [id]
+                );
+
+
+            if (
+                product.rows.length === 0
+            ) {
+
                 return res.status(404).json({
+
                     success: false,
                     message: "Product not found"
+
                 });
             }
 
-            // Delete product
+
+            // ======================================
+            // DELETE PRODUCT
+            // ======================================
+
             await pool.query(
-                "DELETE FROM products WHERE id=$1",
+
+                `
+                DELETE FROM products
+                WHERE id = $1
+                `,
+
                 [id]
             );
 
-            res.json({
+
+            // ======================================
+            // RESPONSE
+            // ======================================
+
+            return res.json({
+
                 success: true,
-                message: "Product deleted successfully"
+
+                message:
+                    "Product deleted successfully"
+
             });
 
         } catch (error) {
@@ -603,17 +759,20 @@ router.delete(
                 error
             );
 
-            res.status(500).json({
+            return res.status(500).json({
+
                 success: false,
                 message: error.message
-            });
 
+            });
         }
     }
 );
+
 
 // ======================================
 // EXPORT ROUTER
 // ======================================
 
 module.exports = router;
+

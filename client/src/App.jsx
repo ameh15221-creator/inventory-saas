@@ -30,7 +30,7 @@ import {
 
 const API_URL = (
   import.meta.env.VITE_API_URL ||
-  "https://inventory-saas-c55p.onrender.com"
+  "http://127.0.0.1:5001"
 ).replace(/\/$/, "") + "/api";
 
 
@@ -959,8 +959,17 @@ const paginatedProducts =
   };
 
   // ==========================
-  // IMAGE URL
-  // ==========================
+// IMAGE URL
+// ==========================
+
+const getImageUrl = (image) => {
+  if (!image) {
+    return null;
+  }
+
+  if (image.startsWith("http")) {
+    return image;
+  }
 
   const getImageUrl = (image) => {
   if (!image) {
@@ -980,8 +989,7 @@ const paginatedProducts =
 };
 
 
-   return `https://inventory-saas-c55p.onrender.com/uploads/${image}`;
-  };
+
 
   // ==========================
   // LOGIN CHECK
@@ -1934,7 +1942,8 @@ const paginatedProducts =
         theme="colored"
       />
 
-    </div>
+        </div>
   );
+}
 
 export default App;
