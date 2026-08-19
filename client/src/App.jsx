@@ -30,9 +30,8 @@ import {
 
 const API_URL = (
   import.meta.env.VITE_API_URL ||
-  "http://127.0.0.1:5001"
+  "https://inventory-saas-c55p.onrender.com"
 ).replace(/\/$/, "") + "/api";
-
 
 const getToken = () => localStorage.getItem("token");
 
@@ -971,24 +970,8 @@ const getImageUrl = (image) => {
     return image;
   }
 
-  const getImageUrl = (image) => {
-  if (!image) {
-    return null;
-  }
-
-  if (image.startsWith("http")) {
-    return image;
-  }
-
-  const backendUrl = (
-    import.meta.env.VITE_API_URL ||
-    "https://inventory-saas-c55p.onrender.com"
-  ).replace(/\/$/, "");
-
-  return `${backendUrl}/uploads/${image}`;
+  return `https://inventory-saas-c55p.onrender.com/uploads/${image}`;
 };
-
-
 
 
   // ==========================
@@ -1942,7 +1925,8 @@ const getImageUrl = (image) => {
         theme="colored"
       />
 
-        </div>
+      
+    </div>
   );
 }
 
